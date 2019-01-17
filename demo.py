@@ -3,6 +3,7 @@ from io import StringIO
 import sys
 import argparse
 from pathlib import Path
+import json
 
 import cv2
 import numpy as np
@@ -66,16 +67,6 @@ def postproc(tracks, is_new, enter_train, exit_train):
             exit_train.append([track.track_id, track.change_env_frame])
             continue        
     return enter_train, exit_train
-
-def print_finals(enter_train, exit_train):
-    NO_PEOPLE = True
-    for el in enter_train:
-        print(el[0])
-        NO_PEOPLE = False
-    for el in exit_train:
-        print(el[0])
-        NO_PEOPLE = False
-    return NO_PEOPLE
 
 def main(
     video_path: Path,
@@ -191,43 +182,38 @@ def main(
         
     enter_train = []
     exit_train = []
-    
     enter_train, exit_train = postproc(tracker.old_conf_tracks, False, enter_train, exit_train)
     enter_train, exit_train = postproc(tracker.tracks, True, enter_train, exit_train)
     
-    NO_PEOPLE = print_finals(enter_train, exit_train)
-
-    # headers of this file is: ['filename', 'is_empty', 'in_count', 'out_count']
+    # headers of this file is: ['filename', in_count', 'out_count']
     with open(out_dir/'bus_report_all.csv', 'a+') as file:
-        if NO_PEOPLE: 
-            file.write('{},{},{},{}\n'.format(video_path.name, True, 0, 0))
-        else:
-            file.write('{},{},{},{}\n'.format(video_path.name, False, len(enter_train), len(exit_train)))
+        file.write('{},{},{}\n'.format(video_path.name, len(enter_train), len(exit_train)))
     
-    with open(out_path.with_suffix('.txt'), 'w+') as f:
-        if NO_PEOPLE == True:
-            f.write("%s " % ('==EMPTY=='))
-        else:
-            f.write("%s " % ('IN (id): '))
-            f.write("%s \n" % (" ".join(str(x[0]) for x in enter_train)))
-            f.write("%s " % ('OUT (id): '))
-            f.write("%s \n" % (" ".join(str(x[0]) for x in exit_train)))
-
-        if len(tracker.old_conf_tracks) != 0 or len(tracker.tracks) !=0:
-            f.write("\n%s \n" % ('==MOVEMENT INSIDE BUS=='))
+    with open(out_path.with_suffix('.json'), 'w') as file:
+        movement = {}
 
         for track in tracker.old_conf_tracks:
             if track.last_seen_frame == -1:
                 track.last_seen_frame = num_frame
             if track.last_seen_frame - track.start_frame > 25:
-                f.write("%s \n" % ('track ' + str(track.track_id) + ' :'+str(track.start_frame) +'--'+ str(track.last_seen_frame) ))
-                # берем best-practice codestyle, и выкидываем его
-                # бывает(
+                movement[track.track_id] = {
+                    'start': track.start_frame,
+                    'end': track.last_seen_frame,
+                }
         for track in tracker.tracks:
             if track.last_seen_frame == -1:
                 track.last_seen_frame = num_frame
             if track.last_seen_frame - track.start_frame > 25:
-                f.write("%s \n" % ('track ' + str(track.track_id) + ' :'+str(track.start_frame) +'--'+ str(track.last_seen_frame) ))
+                movement[track.track_id] = {
+                    'start': track.start_frame,
+                    'end': track.last_seen_frame,
+                }
+        out_json = {
+            'in_ids': enter_train,
+            'out_ids': exit_train,
+            'movement': movement,
+        }
+        json.dump(out_json, file)
 
 
 if __name__ == '__main__':
