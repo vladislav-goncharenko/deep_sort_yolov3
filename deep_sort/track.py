@@ -1,5 +1,5 @@
 # vim: expandtab:ts=4:sw=4
-
+import numpy as np
 
 class TrackState:
     """
@@ -79,6 +79,14 @@ class Track:
 
         self._n_init = n_init
         self._max_age = max_age
+        
+        self.start_frame = -1
+        self.last_seen_frame = -1
+        
+        self.begin_position = -1
+        self.num_frame_begin = -1  #тоже самое, что и start_frame, но используется в другой логической части, пока оставлю
+        self.change_env_frame = -1
+        self.walk_history = np.array([])
 
     def to_tlwh(self):
         """Get current position in bounding box format `(top left x, top left y,

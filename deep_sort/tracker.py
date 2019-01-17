@@ -46,6 +46,12 @@ class Tracker:
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
         self._next_id = 1
+        self.old_conf_tracks  = []
+        
+    def reset(self):
+        self.tracks.clear()
+        self._next_id = 1
+        self.old_conf_tracks.clear()
 
     def predict(self):
         """Propagate track state distributions one time step forward.
@@ -76,6 +82,14 @@ class Tracker:
             self.tracks[track_idx].mark_missed()
         for detection_idx in unmatched_detections:
             self._initiate_track(detections[detection_idx])
+            
+        # переписать при первой возможности, или уехать в Индию
+        new_deleted = [t for t in self.tracks if t.is_deleted()]
+        for t in new_deleted:
+            if t.start_frame != -1:  # критерий "подтвержденности" 
+                self.old_conf_tracks.append(t)            
+            
+            
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
         # Update distance metric.
