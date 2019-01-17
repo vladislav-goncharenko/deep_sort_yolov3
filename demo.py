@@ -1,8 +1,5 @@
-from __future__ import division, print_function, absolute_import
-
 import os
 from io import StringIO
-# import warnings
 import sys
 import argparse
 from pathlib import Path
@@ -20,7 +17,7 @@ from tools import generate_detections as gdet
 from deep_sort.detection import Detection as ddet
 
 
-# warnings.filterwarnings('ignore')
+out_file_prefix = 'deepsort_'
 
 def center_x(bb):
     return (bb[2] + bb[0]) / 2
@@ -38,7 +35,6 @@ def belong(bb1, bb2, eps=20):
         return True
     return False
 
-# 0 в вагоне, 3 мб выход.
 def print_final_state(tracks, input_video):
     for track in tracks:
         print('last detection on frame: ', track.num_frame_end, '\n')
@@ -81,32 +77,26 @@ def print_finals(enter_train, exit_train):
         NO_PEOPLE = False
     return NO_PEOPLE
 
-#     =============================================================================================
-#     =============================================================================================
-# Files changed:
-# demo.py, deep_sort/tracker.py, deep_sort/track.py
-#     =============================================================================================
-
 def main(
     video_path: Path,
     out_dir: Path,
     yolo: YOLO,
     metric,
-    tracker,
+    tracker: Tracker,
     encoder,
 ):
     nms_max_overlap = 1.0
     writeVideo_flag = True
 
     video_capture = cv2.VideoCapture(video_path.as_posix())
+    out_path = out_dir/(out_file_prefix + video_path.name)
     
     if writeVideo_flag:
     # Define the codec and create VideoWriter object
         w = int(video_capture.get(3))
         h = int(video_capture.get(4))
         fourcc = cv2.VideoWriter_fourcc(*'MPEG')
-        out_name = 'DeepSort_' + video_path.name
-        out = cv2.VideoWriter((out_dir/out_name).as_posix(), fourcc, 15, (w, h))
+        out = cv2.VideoWriter(out_path.as_posix(), fourcc, 15, (w, h))
         list_file = open('detection.txt', 'w')
         frame_index = -1
 
@@ -206,16 +196,15 @@ def main(
     enter_train, exit_train = postproc(tracker.tracks, True, enter_train, exit_train)
     
     NO_PEOPLE = print_finals(enter_train, exit_train)
-        
-    with open(out_dir/'bus_report_all.csv', 'a+') as f:
-        if NO_PEOPLE == True: 
-            #s = StringIO(video_path.name + ',' + 'empty' + ',' + '-' + ',' + '-' + '\n') # name,empty,-,-\n
-            f.write(video_path.name + ',' + 'empty' + ',' + '-' + ',' + '-' + '\n')        
+
+    # headers of this file is: ['filename', 'is_empty', 'in_count', 'out_count']
+    with open(out_dir/'bus_report_all.csv', 'a+') as file:
+        if NO_PEOPLE: 
+            file.write('{},{},{},{}\n'.format(video_path.name, True, 0, 0))
         else:
-            #s = StringIO(video_path.name + ',' + '-----' + ',' + str(len(enter_train)) + ',' + str(len(exit_train)) + '\n')
-            f.write(video_path.name + ',' + '-----' + ',' + str(len(enter_train)) + ',' + str(len(exit_train)) + '\n')
+            file.write('{},{},{},{}\n'.format(video_path.name, False, len(enter_train), len(exit_train)))
     
-    with open(out_dir/'detailed_report{}.txt'.format(video_path.name), 'w+') as f:
+    with open(out_path.with_suffix('.txt'), 'w+') as f:
         if NO_PEOPLE == True:
             f.write("%s " % ('==EMPTY=='))
         else:

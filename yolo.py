@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Run a YOLO_v3 style detection model on test images.
 """
@@ -17,6 +15,7 @@ from PIL import Image, ImageFont, ImageDraw
 
 from yolo3.model import yolo_eval
 from yolo3.utils import letterbox_image
+
 
 class YOLO(object):
     def __init__(self):
