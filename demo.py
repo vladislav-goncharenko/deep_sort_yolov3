@@ -80,7 +80,12 @@ def process_video(
     *,
     write_video=False,
     write_yolo=False,
-):
+) -> tuple:
+    '''
+    Processes one video with given objects
+
+    returns ('filename', in_count', 'out_count')
+    '''
     # parameters of the algorithm, hardcoded for now
     nms_max_overlap = 1.0
     exit = [500, 100, 1400, 750]
@@ -199,13 +204,11 @@ def process_video(
     with open(out_path.with_suffix('.json'), 'w') as json_file:
         json.dump(out_json, json_file)
 
-    # headers of this file is: ['filename', in_count', 'out_count']
-    with open(out_dir/'bus_report_all.csv', 'a') as report_file:
-        report_file.write('{},{},{}\n'.format(video_path.name, len(enter_train), len(exit_train)))
+    return video_path.name, len(enter_train), len(exit_train)
 
 
 if __name__ == '__main__':
-    # I guess code below doesn't work now
+    # code below doesn't work now
     # see perform_demo.ipynb
 
     ap = argparse.ArgumentParser()
