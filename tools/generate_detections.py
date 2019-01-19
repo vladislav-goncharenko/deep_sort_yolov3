@@ -69,7 +69,6 @@ def extract_image_patch(image, bbox, patch_shape):
 
 
 class ImageEncoder(object):
-
     def __init__(self, checkpoint_filename, input_name="images",
                  output_name="features"):
         self.session = tf.Session()
