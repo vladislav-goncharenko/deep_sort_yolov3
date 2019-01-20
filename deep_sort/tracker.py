@@ -5,6 +5,7 @@ from . import kalman_filter
 from . import linear_assignment
 from . import iou_matching
 from .track import Track
+import copy
 
 
 class Tracker:
@@ -47,11 +48,24 @@ class Tracker:
         self.tracks = []
         self._next_id = 1
         self.old_conf_tracks  = []
+        self.amount_people_in = 0
+        self.amount_people_out = 0
         
     def reset(self):
-        self.tracks.clear()
-        self._next_id = 1
+        
+        '''
+        If you don't use sequence of videous, uncomment it
+        '''
+#         self.tracks.clear()
+#         self._next_id = 1
+#         self.amount_people_in = 0
+#         self.amount_people_out = 0
+
+
         self.old_conf_tracks.clear()
+#         next_gen_tracks = copy.deepcopy(tracks) 
+        # well, wtf i'm doing... Overmind
+        
 
     def predict(self):
         """Propagate track state distributions one time step forward.
@@ -87,6 +101,10 @@ class Tracker:
         new_deleted = [t for t in self.tracks if t.is_deleted()]
         for t in new_deleted:
             if t.start_frame != -1:  # критерий "подтвержденности" 
+                if t.begin_position == 3 and t.walk_history[-1] == 0: # enter
+                    self.amount_people_in += 1
+                if t.begin_position == 0 and t.walk_history[-1] == 3: # out
+                    self.amount_people_out += 1
                 self.old_conf_tracks.append(t)            
             
             

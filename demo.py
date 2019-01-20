@@ -19,17 +19,20 @@ from tools import generate_detections as gdet
 from deep_sort.detection import Detection as ddet
 from utils import open_video, frames
 
+out_file_prefix = 'ds_'  # stands for DeepSort
 
-out_file_prefix = 'ds_' # stands for DeepSort
 
 def center_x(bb):
     return (bb[2] + bb[0]) / 2
 
+
 def center_y(bb):
     return (bb[3] + bb[1]) / 2
 
+
 def center(bb):
     return np.asarray([center_x(bb), center_y(bb)])
+
 
 def belong(bb1, bb2, eps=20):
     c_x = center_x(bb2)
@@ -37,6 +40,7 @@ def belong(bb1, bb2, eps=20):
     if (c_x < bb1[2] and c_x > bb1[0] and c_y < bb1[3] and c_y > bb1[1]):
         return True
     return False
+
 
 def postproc(tracks, is_new, enter_train, exit_train):
     for track in tracks:
@@ -51,19 +55,20 @@ def postproc(tracks, is_new, enter_train, exit_train):
             continue
         if track.begin_position == 0 and track.walk_history[-1] == 3:
             exit_train.append([track.track_id, track.change_env_frame])
-            continue        
+            continue
     return enter_train, exit_train
 
+
 def process_video(
-    video_path: Path,
-    out_dir: Path,
-    yolo: YOLO,
-    metric,
-    tracker: Tracker,
-    encoder,
-    *,
-    write_video=False,
-    write_yolo=False,
+        video_path: Path,
+        out_dir: Path,
+        yolo: YOLO,
+        metric,
+        tracker: Tracker,
+        encoder,
+        *,
+        write_video=False,
+        write_yolo=False,
 ) -> tuple:
     '''
     Processes one video with given objects
@@ -75,18 +80,23 @@ def process_video(
     exit = [500, 100, 1400, 750]
     yolo_boxes = []
 
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    fontScale = 1
+    fontColor = (255, 255, 255)
+    lineType = 2
+
     with ExitStack() as stack:
         in_video = stack.enter_context(open_video(video_path))
-        out_path = out_dir/(out_file_prefix + video_path.name)
+        out_path = out_dir / (out_file_prefix + video_path.name)
         if write_video:
             width = int(in_video.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(in_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
             out_video = stack.enter_context(open_video(
                 out_path,
                 'w',
-                cv2.VideoWriter_fourcc(*'XVID'), # fourcc
-                15, # fps
-                (width, height), # frame size
+                cv2.VideoWriter_fourcc(*'XVID'),  # fourcc
+                15,  # fps
+                (width, height),  # frame size
             ))
 
         active_tracks_exists = False
@@ -96,13 +106,19 @@ def process_video(
                 continue
 
             image = Image.fromarray(frame)
-            boxs = yolo.detect_image(image)
+#             boxs = yolo.detect_image(image)
+            
+            boxs = yolo.predict_tracker(image, frame_num=num_frame)
+            
+            with open('det_len.txt', 'a+') as f:
+                f.write(str(len(boxs)))
+
             yolo_boxes.append(boxs)
             features = encoder(frame, boxs)
 
             # score to 1.0 here.
             detections = [Detection(bbox, 1.0, feature)
-                            for bbox, feature in zip(boxs, features)]
+                          for bbox, feature in zip(boxs, features)]
 
             # Run non-maxima suppression.
             boxes = np.array([d.tlwh for d in detections])
@@ -119,7 +135,7 @@ def process_video(
             for track in tracker.tracks:
                 if not track.is_confirmed() or track.time_since_update > 1:
                     continue
-                bbox = track.to_tlbr() 
+                bbox = track.to_tlbr()
                 if belong(exit, bbox, eps=20):
                     if track.begin_position == -1:
                         track.begin_position = 3
@@ -138,8 +154,8 @@ def process_video(
                 track.walk_history = np.append(track.walk_history, 0)
 
             for track in tracker.tracks:
-                bbox = track.to_tlbr()                
-                if not track.is_confirmed() or track.time_since_update > 1: 
+                bbox = track.to_tlbr()
+                if not track.is_confirmed() or track.time_since_update > 1:
                     continue
 
                 if track.start_frame == -1:
@@ -150,12 +166,28 @@ def process_video(
                     continue
 
                 active_tracks_exists = True
-                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
-                cv2.putText(frame, str(track.track_id),(int(bbox[0]), int(bbox[1])),0, 5e-3 * 200, (0,255,0),2)
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (255, 0, 0), 2)
+                cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1])), 0, 5e-3 * 200, (0, 255, 0), 2)
+
+                ## here
+                bottomLeftCornerOfText = (1000, 50)
+                cv2.putText(frame, "In: " + str(tracker.amount_people_in),
+                            bottomLeftCornerOfText,
+                            font,
+                            fontScale,
+                            fontColor,
+                            lineType)
+                bottomLeftCornerOfText = (1000, 100)
+                cv2.putText(frame, "Out: " + str(tracker.amount_people_in),
+                            bottomLeftCornerOfText,
+                            font,
+                            fontScale,
+                            fontColor,
+                            lineType)
 
             for det in detections:
                 bbox = det.to_tlbr()
-                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (255, 0, 0), 2)
                 # 1080 1920
                 # cv2.rectangle(frame, (500, 100), (1400, 1000),(0,255,0), 3)
 
@@ -196,24 +228,24 @@ if __name__ == '__main__':
     # see perform_demo.ipynb
 
     ap = argparse.ArgumentParser()
-    # ap.add_argument("-i", "--input_video", required=True, 
+    # ap.add_argument("-i", "--input_video", required=True,
     #                 help="path to input video")
-    ap.add_argument("-i", "--input_dir", required=True, 
+    ap.add_argument("-i", "--input_dir", required=True,
                     help="path to input videos folder, like /mnt/nfs/buses/bu/3/")
-    ap.add_argument("-r", "--report_dir", required=True, 
+    ap.add_argument("-r", "--report_dir", required=True,
                     help="path to input videos folder, like /mnt/nfs/.../")
-    ap.add_argument("-o", "--output_video_dir", required=True, 
+    ap.add_argument("-o", "--output_video_dir", required=True,
                     help="path to the output folder")
     args = vars(ap.parse_args())
 
     directory = args['input_dir']
-    files = os.listdir(directory) 
+    files = os.listdir(directory)
 
     # Definition of the parameters
     max_cosine_distance = 0.3
     nn_budget = None
 
-   # deep_sort 
+    # deep_sort
     model_filename = 'model_data/mars-small128.pb'
     encoder = gdet.create_box_encoder(model_filename, batch_size=1)
 
