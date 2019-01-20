@@ -38,33 +38,17 @@ def belong(bb1, bb2, eps=20):
         return True
     return False
 
-def print_final_state(tracks, input_video):
-    for track in tracks:
-        print('last detection on frame: ', track.num_frame_end, '\n')
-        print("Трек №", track.track_id, " завершился в состоянии ", track.walk_history[-1])
-
 def postproc(tracks, is_new, enter_train, exit_train):
     for track in tracks:
-        
-        if (is_new):
+        if is_new:
             if not track.is_confirmed():
-                    continue
-        else:
-            if  track.last_seen_frame - track.start_frame < 25:
                 continue
-
-        # USUAL
-        if track.track_id == 6:
-            print(is_new)
-            print(len(track.walk_history), track.start_frame, track.last_seen_frame)
-            for el in track.walk_history:
-                print(el)
-            print('\n')
-
+        else:
+            if track.last_seen_frame - track.start_frame < 25:
+                continue
         if track.begin_position == 3 and track.walk_history[-1] == 0:
             enter_train.append([track.track_id, track.change_env_frame])
             continue
-
         if track.begin_position == 0 and track.walk_history[-1] == 3:
             exit_train.append([track.track_id, track.change_env_frame])
             continue        
@@ -95,8 +79,8 @@ def process_video(
         in_video = stack.enter_context(open_video(video_path))
         out_path = out_dir/(out_file_prefix + video_path.name)
         if write_video:
-            width = in_video.get(cv2.CAP_PROP_FRAME_WIDTH)
-            height = in_video.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            width = int(in_video.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(in_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
             out_video = stack.enter_context(open_video(
                 out_path,
                 'w',
@@ -162,8 +146,8 @@ def process_video(
                     track.start_frame = num_frame
                 track.last_seen_frame = num_frame
 
-                if not belong(exit, bbox, eps=20): #просто не будет отрисовки + если никого нет в зоне выхода, то 
-                    continue                        # шаг в 12 кадров
+                if not belong(exit, bbox, eps=20):
+                    continue
 
                 active_tracks_exists = True
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
@@ -177,10 +161,10 @@ def process_video(
 
             if write_video:
                 out_video.write(frame)
-    
+
     if write_yolo:
-        with open(out_path.with_suffix('.yolo.json')) as yolo_file:
-            json.dump(yolo_boxes, yolo_file)
+        with open(out_path.with_suffix('.yolo.json'), 'w') as yolo_file:
+            json.dump(yolo_boxes, yolo_file, indent=2, sort_keys=True)
 
     enter_train = []
     exit_train = []
@@ -202,7 +186,7 @@ def process_video(
         'movement': movement,
     }
     with open(out_path.with_suffix('.json'), 'w') as json_file:
-        json.dump(out_json, json_file)
+        json.dump(out_json, json_file, indent=2, sort_keys=True)
 
     return video_path.name, len(enter_train), len(exit_train)
 

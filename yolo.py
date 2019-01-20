@@ -5,8 +5,7 @@ Run a YOLO_v3 style detection model on test images.
 import colorsys
 import os
 import random
-from timeit import time
-from timeit import default_timer as timer  ### to calculate FPS
+from timeit import time, default_timer as timer
 
 import numpy as np
 from keras import backend as K
@@ -21,7 +20,7 @@ class YOLO(object):
     def __init__(self):
         self.model_path = 'model_data/yolo.h5'
         self.anchors_path = 'model_data/yolo_anchors.txt'
-        self.classes_path = 'model_data/coco_classes.txt'
+        self.classes_path = 'model_data/neurus_classes.txt'
         self.score = 0.5
         self.iou = 0.5
         self.class_names = self._get_class()
