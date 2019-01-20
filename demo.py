@@ -19,20 +19,17 @@ from tools import generate_detections as gdet
 from deep_sort.detection import Detection as ddet
 from utils import open_video, frames
 
-out_file_prefix = 'ds_'  # stands for DeepSort
 
+out_file_prefix = 'ds_'  # stands for DeepSort
 
 def center_x(bb):
     return (bb[2] + bb[0]) / 2
 
-
 def center_y(bb):
     return (bb[3] + bb[1]) / 2
 
-
 def center(bb):
     return np.asarray([center_x(bb), center_y(bb)])
-
 
 def belong(bb1, bb2, eps=20):
     c_x = center_x(bb2)
@@ -40,7 +37,6 @@ def belong(bb1, bb2, eps=20):
     if (c_x < bb1[2] and c_x > bb1[0] and c_y < bb1[3] and c_y > bb1[1]):
         return True
     return False
-
 
 def postproc(tracks, is_new, enter_train, exit_train):
     for track in tracks:
@@ -58,17 +54,16 @@ def postproc(tracks, is_new, enter_train, exit_train):
             continue
     return enter_train, exit_train
 
-
 def process_video(
-        video_path: Path,
-        out_dir: Path,
-        yolo: YOLO,
-        metric,
-        tracker: Tracker,
-        encoder,
-        *,
-        write_video=False,
-        write_yolo=False,
+    video_path: Path,
+    out_dir: Path,
+    yolo: YOLO,
+    metric,
+    tracker: Tracker,
+    encoder,
+    *,
+    write_video=False,
+    write_yolo=False,
 ) -> tuple:
     '''
     Processes one video with given objects
@@ -87,16 +82,16 @@ def process_video(
 
     with ExitStack() as stack:
         in_video = stack.enter_context(open_video(video_path))
-        out_path = out_dir / (out_file_prefix + video_path.name)
+        out_path = out_dir/(out_file_prefix + video_path.name)
         if write_video:
             width = int(in_video.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(in_video.get(cv2.CAP_PROP_FRAME_HEIGHT))
             out_video = stack.enter_context(open_video(
                 out_path,
                 'w',
-                cv2.VideoWriter_fourcc(*'XVID'),  # fourcc
-                15,  # fps
-                (width, height),  # frame size
+                cv2.VideoWriter_fourcc(*'XVID'), # fourcc
+                15, # fps
+                (width, height), # frame size
             ))
 
         active_tracks_exists = False
@@ -107,9 +102,8 @@ def process_video(
 
             image = Image.fromarray(frame)
 #             boxs = yolo.detect_image(image)
-            
             boxs = yolo.predict_tracker(image, frame_num=num_frame)
-            
+
             with open('det_len.txt', 'a+') as f:
                 f.write(str(len(boxs)))
 
@@ -118,7 +112,7 @@ def process_video(
 
             # score to 1.0 here.
             detections = [Detection(bbox, 1.0, feature)
-                          for bbox, feature in zip(boxs, features)]
+                            for bbox, feature in zip(boxs, features)]
 
             # Run non-maxima suppression.
             boxes = np.array([d.tlwh for d in detections])
