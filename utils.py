@@ -36,4 +36,6 @@ def frames(video: cv2.VideoCapture):
         retval, frame = video.read()
         if not retval:
             break
+        # this is to return RGB image instead of BGR
+        frame = frame[..., ::-1]
         yield frame

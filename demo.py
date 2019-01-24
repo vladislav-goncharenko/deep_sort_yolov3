@@ -9,7 +9,6 @@ from contextlib import ExitStack
 import cv2
 import numpy as np
 from PIL import Image
-from yolo import YOLO
 
 from deep_sort import preprocessing
 from deep_sort import nn_matching
@@ -57,7 +56,7 @@ def postproc(tracks, is_new, enter_train, exit_train):
 def process_video(
     video_path: Path,
     out_dir: Path,
-    yolo: YOLO,
+    yolo,
     metric,
     tracker: Tracker,
     encoder,
@@ -96,7 +95,8 @@ def process_video(
                 continue
 
             image = Image.fromarray(frame)
-            boxs = yolo.detect_image(image)
+            yolo_dets = yolo.predict_tracker(image)
+            boxs = [det[2:6] for det in yolo_dets]
             yolo_boxes.append(boxs)
             features = encoder(frame, boxs)
 
@@ -119,7 +119,7 @@ def process_video(
             for track in tracker.tracks:
                 if not track.is_confirmed() or track.time_since_update > 1:
                     continue
-                bbox = track.to_tlbr() 
+                bbox = track.to_tlbr()
                 if belong(exit, bbox, eps=20):
                     if track.begin_position == -1:
                         track.begin_position = 3
@@ -156,8 +156,6 @@ def process_video(
             for det in detections:
                 bbox = det.to_tlbr()
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
-                # 1080 1920
-                # cv2.rectangle(frame, (500, 100), (1400, 1000),(0,255,0), 3)
 
             if write_video:
                 out_video.write(frame)
