@@ -96,7 +96,7 @@ def process_video(
 
             image = Image.fromarray(frame)
             yolo_dets = yolo.predict_tracker(image)
-            boxs = [det[2:6] for det in yolo_dets]
+            boxs = [[int(d) for d in det[2:6]] for det in yolo_dets]
             yolo_boxes.append(boxs)
             features = encoder(frame, boxs)
 
@@ -138,7 +138,7 @@ def process_video(
                 track.walk_history = np.append(track.walk_history, 0)
 
             for track in tracker.tracks:
-                bbox = track.to_tlbr()                
+                bbox = prettify_bbox(track.to_tlbr())
                 if not track.is_confirmed() or track.time_since_update > 1: 
                     continue
 
@@ -153,9 +153,9 @@ def process_video(
                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
                 cv2.putText(frame, str(track.track_id),(int(bbox[0]), int(bbox[1])),0, 5e-3 * 200, (0,255,0),2)
 
-            for det in detections:
-                bbox = det.to_tlbr()
-                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+            # for det in detections:
+            #     bbox = det.to_tlbr()
+            #     cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
 
             if write_video:
                 out_video.write(frame)
