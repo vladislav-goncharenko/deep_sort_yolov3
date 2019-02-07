@@ -40,6 +40,13 @@ def frames(video: cv2.VideoCapture):
         frame = frame[..., ::-1]
         yield frame
 
+def read_frames(video_path: Path):
+    '''
+    Combines functions open_video and frames for compactness
+    '''
+    with open_video(video_path) as video_cap:
+        yield from frames(video_cap)
+
 def convert_bbox(bbox: tuple, fr: str, to: str) -> tuple:
     '''
     Converts bounding box from one fromat to other
