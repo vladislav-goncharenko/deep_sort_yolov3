@@ -16,7 +16,7 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from deep_sort.detection import Detection as ddet
-from utils import open_video, frames
+from utils import open_video, frames, prettify_bbox
 
 
 out_file_prefix = 'ds_' # stands for DeepSort
@@ -73,6 +73,7 @@ def process_video(
     nms_max_overlap = 1.0
     exit = [500, 100, 1400, 750]
     yolo_boxes = []
+    deepsort_boxes = []
 
     with ExitStack() as stack:
         in_video = stack.enter_context(open_video(video_path))
@@ -137,22 +138,25 @@ def process_video(
                     track.change_env_frame = num_frame
                 track.walk_history = np.append(track.walk_history, 0)
 
+            deepsort_tmp = []
             for track in tracker.tracks:
-                bbox = prettify_bbox(track.to_tlbr())
+#                 bbox = prettify_bbox(frame, track.to_tlbr())
+                bbox = track.to_tlbr()
                 if not track.is_confirmed() or track.time_since_update > 1: 
                     continue
 
                 if track.start_frame == -1:
                     track.start_frame = num_frame
                 track.last_seen_frame = num_frame
+                deepsort_tmp.append((track.track_id, [int(b) for b in bbox]))
 
                 if not belong(exit, bbox, eps=20):
                     continue
 
                 active_tracks_exists = True
-                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
-                cv2.putText(frame, str(track.track_id),(int(bbox[0]), int(bbox[1])),0, 5e-3 * 200, (0,255,0),2)
-
+#                 cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
+#                 cv2.putText(frame, str(track.track_id),(int(bbox[0]), int(bbox[1])),0, 5e-3 * 200, (0,255,0),2)
+            deepsort_boxes.append(deepsort_tmp)
             # for det in detections:
             #     bbox = det.to_tlbr()
             #     cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])),(255,0,0), 2)
@@ -163,6 +167,8 @@ def process_video(
     if write_yolo:
         with open(out_path.with_suffix('.yolo.json'), 'w') as yolo_file:
             json.dump(yolo_boxes, yolo_file, indent=2, sort_keys=True)
+    with open(out_path.with_suffix('.deepsort.json'), 'w') as deepsort_file:
+        json.dump(deepsort_boxes, deepsort_file, indent=2, sort_keys=True)
 
     enter_train = []
     exit_train = []
